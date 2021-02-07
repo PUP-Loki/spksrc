@@ -11,11 +11,16 @@ HOMEPAGE = https://numpy.org/
 COMMENT  = The fundamental package for scientific computing with Python
 LICENSE  = https://numpy.org/doc/stable/license.html
 
-include ../../mk/spksrc.common.mk
+include ../../mk/spksrc.archs.mk
 
-ifeq ($(findstring $(ARCH), $(ARM8_ARCHES)),$(ARCH))
+ifeq ($(findstring $(ARCH),$(ARMv8_ARCHS)),$(ARCH))
 # workaround for compiler bug, see: https://github.com/numpy/numpy/issues/13622
 ADDITIONAL_CFLAGS += -O0
 endif
 
 include ../../mk/spksrc.python-wheel.mk
+
+ifeq ($(PYTHON_LIB_NATIVE),$(PYTHON_LIB_CROSS))
+LD_LIBRARY_PATH := $(INSTALL_DIR)$(INSTALL_PREFIX)/lib:$(LD_LIBRARY_PATH)
+export LD_LIBRARY_PATH
+endif

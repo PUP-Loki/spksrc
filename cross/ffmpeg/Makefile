@@ -5,13 +5,14 @@ PKG_DIST_NAME = $(PKG_NAME)-$(PKG_VERS).$(PKG_EXT)
 PKG_DIST_SITE = https://www.ffmpeg.org/releases
 PKG_DIR = $(PKG_NAME)-$(PKG_VERS)
 
-DEPENDS = cross/flac cross/freetype cross/fribidi cross/lame cross/libass
+DEPENDS = cross/flac cross/freetype cross/fribidi cross/lame
 DEPENDS += cross/libbluray cross/speex
 DEPENDS += cross/libtheora
 DEPENDS += cross/gnutls cross/opus
 DEPENDS += cross/soxr cross/x264 cross/x265
 DEPENDS += cross/opencore-amr
 
+OPTIONAL_DEPENDS = cross/libass
 OPTIONAL_DEPENDS = cross/libaom cross/svt-av1 native/nasm cross/json-c
 OPTIONAL_DEPENDS += cross/libva cross/libva-utils cross/intel-vaapi-driver cross/intel-media-driver cross/intel-media-sdk cross/svt-hevc
 OPTIONAL_DEPENDS += cross/shine cross/libvpx
@@ -29,7 +30,7 @@ CONFIGURE_ARGS += --extra-libs="-lxml2 -ldl" --pkg-config=/usr/bin/pkg-config --
 CONFIGURE_ARGS += --enable-cross-compile --enable-rpath --enable-pic
 CONFIGURE_ARGS += --enable-shared
 CONFIGURE_ARGS += --enable-gpl --enable-version3
-CONFIGURE_ARGS += --enable-fontconfig --enable-libass --enable-libbluray --enable-avresample
+CONFIGURE_ARGS += --enable-fontconfig --enable-libbluray --enable-avresample
 CONFIGURE_ARGS += --enable-libfreetype --enable-libfribidi --enable-libmp3lame
 CONFIGURE_ARGS += --enable-libopus --enable-libsoxr
 CONFIGURE_ARGS += --enable-libtheora --enable-libvorbis
@@ -79,12 +80,18 @@ ifneq ($(findstring $(TCVERSION), 5.2),$(TCVERSION))
 DEPENDS += cross/libvpx cross/libzmq
 CONFIGURE_ARGS += --enable-libvpx --enable-libzmq
 
+# Newer libass requires harfbuzz which in turns requires c++ from gcc >= 4.8 (88f6281-6.1 = gcc-4.6.4)
+ifneq ($(findstring $(ARCH),$(ARMv5_ARCHS)),$(ARCH))
+DEPENDS += cross/libass
+CONFIGURE_ARGS += --enable-libass
+endif
+
 ifneq ($(findstring $(ARCH), ppc853x),$(ARCH))
 DEPENDS += cross/shine
 CONFIGURE_ARGS += --enable-libshine
 endif
 
-ifeq ($(findstring $(ARCH),alpine comcerto2k monaco $(ARM8_ARCHES) $(x86_ARCHES) $(x64_ARCHES)),$(ARCH))
+ifeq ($(findstring $(ARCH),alpine comcerto2k monaco $(ARMv8_ARCHS) $(i686_ARCHS) $(x64_ARCHS)),$(ARCH))
 DEPENDS += cross/libaom
 CONFIGURE_ARGS += --enable-libaom
 endif
@@ -92,31 +99,31 @@ endif
 
 # Add SVT-AV1 codec to supported ARCH
 # Patch for support from: https://github.com/OpenVisualCloud/SVT-AV1/tree/master/ffmpeg_plugin
-ifeq ($(findstring $(ARCH),alpine comcerto2k monaco $(ARM8_ARCHES) $(x64_ARCHES)),$(ARCH))
+ifeq ($(findstring $(ARCH),alpine comcerto2k monaco $(ARMv8_ARCHS) $(x64_ARCHS)),$(ARCH))
 DEPENDS += cross/svt-av1
 CONFIGURE_ARGS += --enable-libsvtav1
 endif
 
-ifeq ($(findstring $(ARCH),$(ARM5_ARCHES)),$(ARCH))
+ifeq ($(findstring $(ARCH),$(ARMv5_ARCHS)),$(ARCH))
 CONFIGURE_ARGS += --arch=arm --disable-neon --disable-yasm --disable-asm
 endif
 
-ifeq ($(findstring $(ARCH),$(ARM7_ARCHES)),$(ARCH))
+ifeq ($(findstring $(ARCH),$(ARMv7_ARCHS) $(ARMv7L_ARCHS)),$(ARCH))
 CONFIGURE_ARGS += --arch=arm --enable-neon --enable-thumb --disable-armv6 --disable-armv6t2 --disable-vfp --disable-armv5te --disable-yasm --disable-asm
 ifneq ($(findstring $(ARCH),alpine),$(ARCH))
 CONFIGURE_ARGS += --extra-cflags=-DSYNO_ALPINE_NEON
 endif
 endif
 
-ifeq ($(findstring $(ARCH),$(ARM8_ARCHES)),$(ARCH))
+ifeq ($(findstring $(ARCH),$(ARMv8_ARCHS)),$(ARCH))
 CONFIGURE_ARGS += --arch=arm64 --enable-neon --enable-thumb --disable-yasm --disable-asm
 endif
 
-ifeq ($(findstring $(ARCH),$(x86_ARCHES)),$(ARCH))
+# only evansport is in i686 archs - no other x86 arch is supported
+ifeq ($(findstring $(ARCH),$(i686_ARCHS)),$(ARCH))
 DEPENDS += native/nasm
 ENV += PATH=$(NASM_PATH):$$PATH
 
-ifeq ($(findstring $(ARCH),'evansport'),$(ARCH))
 DEPENDS += cross/json-c
 CONFIGURE_ARGS += --arch=x86 --cpu=atom
 CONFIGURE_ARGS += --disable-x86asm
@@ -138,18 +145,15 @@ CONFIGURE_ARGS += --disable-decoder=wmv3_smd
 #CONFIGURE_ARGS += --extra-cflags=-DSYNO_EVANSPORT_SMD
 #CONFIGURE_ARGS += --enable-libh264_smd --enable-smd
 
-else
-CONFIGURE_ARGS += --arch=i386
-endif
 endif
 
-ifeq ($(findstring $(ARCH),$(x64_ARCHES)),$(ARCH))
+ifeq ($(findstring $(ARCH),$(x64_ARCHS)),$(ARCH))
 DEPENDS += native/nasm cross/libva cross/libva-utils cross/intel-vaapi-driver cross/intel-media-driver cross/intel-media-sdk cross/svt-hevc
 ENV += PATH=$(NASM_PATH):$$PATH
 CONFIGURE_ARGS += --arch=x86_64 --enable-vaapi --enable-libmfx --enable-libsvthevc
 endif
 
-ifeq ($(findstring $(ARCH),$(PPC_ARCHES)),$(ARCH))
+ifeq ($(findstring $(ARCH),$(PPC_ARCHS)),$(ARCH))
 DEPENDS += native/nasm
 ENV += PATH=$(NASM_PATH):$$PATH
 CONFIGURE_ARGS += --arch=ppc
